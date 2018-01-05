@@ -1,0 +1,7 @@
+C:\Users\Cristhiam\Desktop\Barcode\bin\Debug\Barcode.exe
+C:\Users\Cristhiam\Desktop\Barcode\bin\Debug\Barcode.pdb
+C:\Users\Cristhiam\Desktop\Barcode\obj\Debug\Barcode.csprojResolveAssemblyReference.cache
+C:\Users\Cristhiam\Desktop\Barcode\obj\Debug\Barcode.Form1.resources
+C:\Users\Cristhiam\Desktop\Barcode\obj\Debug\Barcode.csproj.GenerateResource.Cache
+C:\Users\Cristhiam\Desktop\Barcode\obj\Debug\Barcode.exe
+C:\Users\Cristhiam\Desktop\Barcode\obj\Debug\Barcode.pdb
