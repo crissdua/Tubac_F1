@@ -1,7 +1,15 @@
 ﻿Imports System.Windows.Forms
 Imports System.IO
 Imports System.Data.SqlClient
+Imports System.Data
+Imports System.Drawing.Text
+Imports CrystalDecisions.Shared
+Imports CrystalDecisions.CrystalReports.Engine
+Imports CrystalDecisions.Windows.Forms
+Imports CrystalDecisions.ReportSource
+Imports System.Web.UI.WebControls
 Public Class FrmP
+#Region "Variables"
     Public con As New Conexion
     Dim objectCode As String
     Dim itemcode As String
@@ -11,7 +19,22 @@ Public Class FrmP
     Public Shared GoodsReceiptPO As SAPbobsCOM.Documents
     Public Shared SQL_Conexion As SqlConnection = New SqlConnection()
 
+#Region "Listas"
+    Dim batch As New List(Of String)
+    Dim descripcion As New List(Of String)
+    Dim anchotira As New List(Of Double)
+    Dim pesoreal As New List(Of Double)
+    Dim bobina As New List(Of String)
+    Dim heat As New List(Of String)
+    Dim coil As New List(Of String)
+    Dim ordencorte As New List(Of String)
+#End Region
+#Region "Fuentes"
+    Private _Font As Font
+    Private PATH_FONTS As String = Application.StartupPath + "\Fonts"
+#End Region
     Private Const CP_NOCLOSE_BUTTON As Integer = &H200
+#End Region
     Protected Overloads Overrides ReadOnly Property CreateParams() As CreateParams
         Get
             Dim myCp As CreateParams = MyBase.CreateParams
@@ -25,9 +48,18 @@ Public Class FrmP
         '  Note which form has called this one
         ToolStripStatusLabel1.Text = user
     End Sub
+    Private Function FormatBarCode(code As String)
+        Dim barcode As String = String.Empty
+        barcode = String.Format("*{0}*", code)
+        Return barcode
+    End Function
     Private Sub FrmFase1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         TextBox2.Select()
         cargaORDER()
+        Dim pfc As PrivateFontCollection = New PrivateFontCollection()
+        pfc.AddFontFile(PATH_FONTS & "\BARCOD39.TTF")
+        Dim fontFamily As FontFamily = pfc.Families(0)
+        _Font = New Font(fontFamily, 30)
     End Sub
     Public Function cargaORDER()
         Dim SQL_da As SqlDataAdapter = New SqlDataAdapter("SELECT T0.DocNum FROM OPOR T0 WHERE T0.DocType ='I' and  T0.CANCELED = 'N' and  T0.DocStatus ='O'", con.ObtenerConexion())
@@ -47,7 +79,32 @@ Public Class FrmP
         con.ObtenerConexion.Close()
     End Sub
 
+    Private Sub imprime(bat As String, desc As String, anch As Double, pes As Double, bob As String, het As String, coi As String, ordr As String)
+        Dim Report1 As New CrystalDecisions.CrystalReports.Engine.ReportDocument()
+        Report1.PrintOptions.PaperOrientation = PaperOrientation.Portrait
+        Report1.Load("C:\Users\Cristhiam\Desktop\Informe3.rpt", CrystalDecisions.Shared.OpenReportMethod.OpenReportByDefault.OpenReportByDefault)
+        Report1.SetParameterValue("CodBatch", bat)
+        'Report1.SetParameterValue("CodBatch", txtBarcode.Text)
+        Report1.SetParameterValue("descripcion", desc)
+        Report1.SetParameterValue("anchotira", anch)
+        Report1.SetParameterValue("pesoreal", pes)
+        Report1.SetParameterValue("bobina", bob)
+        Report1.SetParameterValue("heat", het)
+        Report1.SetParameterValue("coil", coi)
+        Report1.SetParameterValue("ordencorte", ordr)
+        Report1.SetParameterValue("fechacorte", Now.ToShortDateString)
+        'CrystalReportViewer1.ReportSource = Report1
+        Report1.PrintToPrinter(1, False, 0, 0)
+    End Sub
     Private Sub generaEntrada()
+        batch.Clear()
+        descripcion.Clear()
+        anchotira.Clear()
+        pesoreal.Clear()
+        bobina.Clear()
+        heat.Clear()
+        coil.Clear()
+        ordencorte.Clear()
         Dim iResult As Integer = -1
         Dim iResult2 As Integer = -1
         Dim sResult As String = String.Empty
@@ -110,9 +167,18 @@ Public Class FrmP
                         GoodsReceiptPO.Lines.BaseEntry = PO.DocEntry
                         GoodsReceiptPO.Lines.BaseLine = DGV2.Rows(chk.RowIndex).Cells.Item(3).Value.ToString
                         GoodsReceiptPO.Lines.BaseType = Convert.ToInt32(PO.DocObjectCodeEx)
-
                         GoodsReceiptPO.Lines.BatchNumbers.SetCurrentLine(0)
-                        GoodsReceiptPO.Lines.BatchNumbers.BatchNumber = "000-00" & DGV2.Rows(chk.RowIndex).Cells.Item(1).Value.ToString
+                        GoodsReceiptPO.Lines.BatchNumbers.BatchNumber = "batchIMP" & DGV2.Rows(chk.RowIndex).Cells.Item(1).Value.ToString
+                        '-----------------------------------------------------------------------------llena listas de datos
+                        batch.Add("batchIMP" & DGV2.Rows(chk.RowIndex).Cells.Item(1).Value.ToString)
+                        descripcion.Add(PO.Lines.ItemDescription)
+                        anchotira.Add(PO.Lines.UserFields.Fields.Item("U_ancho").Value)
+                        pesoreal.Add(PO.Lines.UserFields.Fields.Item("U_peso").Value)
+                        bobina.Add(PO.Lines.UserFields.Fields.Item("U_bobina").Value)
+                        heat.Add(PO.Lines.UserFields.Fields.Item("U_heat").Value)
+                        coil.Add(PO.Lines.UserFields.Fields.Item("U_coil").Value)
+                        ordencorte.Add(PO.DocNum)
+                        '---------------------------------------------------------------------------------------------------
                         GoodsReceiptPO.Lines.BatchNumbers.Quantity = Convert.ToDouble(DGV2.Rows(chk.RowIndex).Cells.Item(2).Value.ToString)
                         GoodsReceiptPO.Lines.BatchNumbers.AddmisionDate = Now
                         GoodsReceiptPO.Lines.BatchNumbers.Add()
@@ -123,22 +189,24 @@ Public Class FrmP
                 Next
 
             End If
-
-            '-------------------------------BATCH--------------------------------------
-
-            '---------------------------------------------------------------------------
-
+            '---------------------------------------Ingresa Mercaderia----------------------
             GoodsReceiptPO.Comments = PO.DocEntry
             iResult = GoodsReceiptPO.Add()
             If iResult <> 0 Then
                 MessageBox.Show(con.oCompany.GetLastErrorDescription)
             Else
                 PO.Comments = PO.DocEntry
-                iResult2 = PO.Update()
+                iResult2 = PO.Update() '---------------------------- Actualiza el pedido (las lineas del pedido)
                 If iResult2 <> 0 Then
                     MessageBox.Show(con.oCompany.GetLastErrorDescription)
                 End If
-                MessageBox.Show("listo")
+                '-------------------------------IMPRIME BATCH--------------------------------------
+                'bat As String, desc As String, anch As Double, pes As Double, bob As String, het As String, coi As String, ordr As String
+                Dim cont As Integer
+                For cont = 0 To batch.Count - 1
+                    imprime(FormatBarCode(batch.Item(cont)), descripcion(cont), anchotira(cont), pesoreal(cont), bobina(cont), heat(cont), coil(cont), ordencorte(cont))
+                Next
+                '-----------------------------------------------------------------------------------
             End If
             con.oCompany.Disconnect()
         Catch ex As Exception

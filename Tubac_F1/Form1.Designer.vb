@@ -73,7 +73,7 @@ Partial Class Form1
         Me.txtBarcode.Name = "txtBarcode"
         Me.txtBarcode.Size = New System.Drawing.Size(112, 20)
         Me.txtBarcode.TabIndex = 7
-        Me.txtBarcode.Text = "125649852"
+        Me.txtBarcode.Text = "123456789011"
         Me.txtBarcode.TextAlign = System.Windows.Forms.HorizontalAlignment.Center
         '
         'PrintDialog2
