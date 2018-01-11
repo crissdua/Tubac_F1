@@ -55,6 +55,8 @@ Public Class FrmP
     End Function
     Private Sub FrmFase1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         TextBox2.Select()
+        DGV2.Visible = False
+        Panel1.Visible = False
         cargaORDER()
         Dim pfc As PrivateFontCollection = New PrivateFontCollection()
         pfc.AddFontFile(PATH_FONTS & "\BARCOD39.TTF")
@@ -233,32 +235,23 @@ Public Class FrmP
 
     Private Sub DGV_CellContentClick(sender As Object, e As DataGridViewCellEventArgs) Handles DGV.CellContentClick
         txtOrder.Text = DGV(0, DGV.CurrentCell.RowIndex).Value.ToString()
-    End Sub
-
-    Private Sub txtOrder_TextChanged(sender As Object, e As EventArgs) Handles txtOrder.TextChanged
-        Dim i As DataGridViewCheckBoxColumn = New DataGridViewCheckBoxColumn()
-        Dim existe As Boolean = DGV2.Columns.Cast(Of DataGridViewColumn).Any(Function(x) x.Name = "CHK")
-        If existe = False Then
-            DGV2.Columns.Add(i)
-            i.HeaderText = "CHK"
-            i.Name = "CHK"
-            i.Width = 32
-            i.DisplayIndex = 0
-        End If
-
-        Dim SQL_da As SqlDataAdapter = New SqlDataAdapter("SELECT T0.[ItemCode], T0.[Quantity], isnull(T0.LineNum,0) FROM POR1 T0 WHERE T0.[LineStatus] = 'O' and T0.[DocEntry] like '" + txtOrder.Text + "%'", con.ObtenerConexion())
+        DGV2.Visible = Enabled
+        Panel1.Visible = Enabled
+        Dim SQL_da As SqlDataAdapter = New SqlDataAdapter("SELECT T0.Cardcode, T0.CardName FROM OPOR T0 WHERE  T0.DocNum = '" + txtOrder.Text + "' ORDER BY T0.DocNum", con.ObtenerConexion())
         Dim DT_dat As System.Data.DataTable = New System.Data.DataTable()
         SQL_da.Fill(DT_dat)
-        DGV2.DataSource = DT_dat
+        Label3.Text = DT_dat.Rows(0).Item("Cardcode").ToString
+        Label5.Text = DT_dat.Rows(0).Item("CardName").ToString
         con.ObtenerConexion.Close()
     End Sub
+
 
     Private Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click
         GR_from_PO()
         DGV.DataSource = Nothing
         DGV2.DataSource = Nothing
         TextBox2.Clear()
-        txtOrder.Clear()
+        txtOrder.Text = ""
     End Sub
 
     Private Sub btnFinalizar_Click(sender As Object, e As EventArgs)
@@ -273,13 +266,15 @@ Public Class FrmP
             MessageBox.Show("Puede continuar!")
         ElseIf result = DialogResult.Yes Then
             TextBox2.Clear()
-            txtOrder.Clear()
+            txtOrder.Text = ""
             PO = Nothing
             GoodsReceiptPO = Nothing
             DGV.DataSource = Nothing
             DGV2.DataSource = Nothing
             MessageBox.Show("Inicie un objeto nuevo")
         End If
+        Panel1.Visible = False
+        DGV2.Visible = False
     End Sub
 
     Private Sub Button3_Click(sender As Object, e As EventArgs) Handles Button3.Click
@@ -296,4 +291,23 @@ Public Class FrmP
             Me.Close()
         End If
     End Sub
+
+    Private Sub txtOrder_TextChanged(sender As Object, e As EventArgs) Handles txtOrder.TextChanged
+        Dim i As DataGridViewCheckBoxColumn = New DataGridViewCheckBoxColumn()
+        Dim existe As Boolean = DGV2.Columns.Cast(Of DataGridViewColumn).Any(Function(x) x.Name = "CHK")
+        If existe = False Then
+            DGV2.Columns.Add(i)
+            i.HeaderText = "CHK"
+            i.Name = "CHK"
+            i.Width = 32
+            i.DisplayIndex = 0
+        End If
+
+        Dim SQL_da As SqlDataAdapter = New SqlDataAdapter("SELECT T0.[ItemCode], T0.[Quantity], isnull(T0.LineNum,0) as No.Linea FROM POR1 T0 WHERE T0.[LineStatus] = 'O' and T0.[DocEntry] like '" + txtOrder.Text + "%'", con.ObtenerConexion())
+        Dim DT_dat As System.Data.DataTable = New System.Data.DataTable()
+        SQL_da.Fill(DT_dat)
+        DGV2.DataSource = DT_dat
+        con.ObtenerConexion.Close()
+    End Sub
+
 End Class
