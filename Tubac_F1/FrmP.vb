@@ -84,7 +84,7 @@ Public Class FrmP
     Private Sub imprime(bat As String, desc As String, anch As Double, pes As Double, bob As String, het As String, coi As String, ordr As String)
         Dim Report1 As New CrystalDecisions.CrystalReports.Engine.ReportDocument()
         Report1.PrintOptions.PaperOrientation = PaperOrientation.Portrait
-        Report1.Load("C:\Users\Cristhiam\Desktop\Informe3.rpt", CrystalDecisions.Shared.OpenReportMethod.OpenReportByDefault.OpenReportByDefault)
+        Report1.Load(Application.StartupPath + "\Report\Informe.rpt", CrystalDecisions.Shared.OpenReportMethod.OpenReportByDefault.OpenReportByDefault)
         Report1.SetParameterValue("CodBatch", bat)
         'Report1.SetParameterValue("CodBatch", txtBarcode.Text)
         Report1.SetParameterValue("descripcion", desc)
@@ -151,7 +151,7 @@ Public Class FrmP
                 i.Width = 32
                 i.DisplayIndex = 0
             End If
-            Dim result As Integer = MessageBox.Show("Desea Ingresar la Orden?", "Atencion", MessageBoxButtons.YesNoCancel)
+            Dim result As Integer = MessageBox.Show("Desea realizar el Ingreso?", "Atencion", MessageBoxButtons.YesNoCancel)
             If result = DialogResult.Cancel Then
                 MessageBox.Show("Cancelado")
             ElseIf result = DialogResult.No Then
@@ -167,12 +167,30 @@ Public Class FrmP
                         'GoodsReceiptPO.Lines.ItemDescription = PO.Lines.ItemDescription
                         GoodsReceiptPO.Lines.Quantity = DGV2.Rows(chk.RowIndex).Cells.Item(2).Value.ToString
                         GoodsReceiptPO.Lines.BaseEntry = PO.DocEntry
+                        'GoodsReceiptPO.Lines.AccountCode = "_SYS00000001408"
                         GoodsReceiptPO.Lines.BaseLine = DGV2.Rows(chk.RowIndex).Cells.Item(3).Value.ToString
                         GoodsReceiptPO.Lines.BaseType = Convert.ToInt32(PO.DocObjectCodeEx)
                         GoodsReceiptPO.Lines.BatchNumbers.SetCurrentLine(0)
-                        GoodsReceiptPO.Lines.BatchNumbers.BatchNumber = "batchIMP" & DGV2.Rows(chk.RowIndex).Cells.Item(1).Value.ToString
+                        Dim batchnumber As Integer
+                        sql = ("WITH batchs AS
+                                (
+                                SELECT T0.ItemCode,T1.WhsCode,convert(int,REPLACE(SUBSTRING(T0.BatchNum, CHARINDEX('-', T0.BatchNum), LEN(T0.BatchNum)), '-', '')) AS BatchNum ,SUM(CASE T0.Direction when 0 then 1 else -1 end * T0.Quantity) as Quantitys 
+                                FROM IBT1 T0 INNER JOIN OWHS T1 ON T0.WhsCode = T1.WhsCode
+                                GROUP BY T0.BatchNum, T1.WhsCode,  T0.ItemCode
+                                )
+                                SELECT max(BatchNum)+1 as batchnum from batchs where Quantitys > 0 and ItemCode = '" + DGV2.Rows(chk.RowIndex).Cells.Item(1).Value.ToString + "'")
+                        oRecordSet = con.oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.BoRecordset)
+                        oRecordSet.DoQuery(sql)
+                        If oRecordSet.RecordCount > 0 Then
+                            batchnumber = oRecordSet.Fields.Item(0).Value
+                        End If
+                        System.Runtime.InteropServices.Marshal.ReleaseComObject(oRecordSet)
+                        oRecordSet = Nothing
+                        GC.Collect()
+
+                        GoodsReceiptPO.Lines.BatchNumbers.BatchNumber = "775-" & batchnumber.ToString
                         '-----------------------------------------------------------------------------llena listas de datos
-                        batch.Add("batchIMP" & DGV2.Rows(chk.RowIndex).Cells.Item(1).Value.ToString)
+                        batch.Add("775-" & batchnumber.ToString)
                         descripcion.Add(PO.Lines.ItemDescription)
                         anchotira.Add(PO.Lines.UserFields.Fields.Item("U_ancho").Value)
                         pesoreal.Add(PO.Lines.UserFields.Fields.Item("U_peso").Value)
@@ -209,6 +227,10 @@ Public Class FrmP
                     imprime(FormatBarCode(batch.Item(cont)), descripcion(cont), anchotira(cont), pesoreal(cont), bobina(cont), heat(cont), coil(cont), ordencorte(cont))
                 Next
                 '-----------------------------------------------------------------------------------
+                MessageBox.Show("Operacion Realizada Exitosamente!")
+                Panel1.Visible = False
+                DGV2.Visible = False
+
             End If
             con.oCompany.Disconnect()
         Catch ex As Exception
@@ -303,7 +325,7 @@ Public Class FrmP
             i.DisplayIndex = 0
         End If
 
-        Dim SQL_da As SqlDataAdapter = New SqlDataAdapter("SELECT T0.[ItemCode], T0.[Quantity], isnull(T0.LineNum,0) as No.Linea FROM POR1 T0 WHERE T0.[LineStatus] = 'O' and T0.[DocEntry] like '" + txtOrder.Text + "%'", con.ObtenerConexion())
+        Dim SQL_da As SqlDataAdapter = New SqlDataAdapter("SELECT T0.[ItemCode], T0.[Quantity], isnull(T0.LineNum,0) as 'No.Linea' FROM POR1 T0 WHERE T0.[LineStatus] = 'O' and T0.[DocEntry] like '" + txtOrder.Text + "%'", con.ObtenerConexion())
         Dim DT_dat As System.Data.DataTable = New System.Data.DataTable()
         SQL_da.Fill(DT_dat)
         DGV2.DataSource = DT_dat
